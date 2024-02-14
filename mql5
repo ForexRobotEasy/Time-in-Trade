@@ -1,0 +1,86 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                   Time in Trade |
+//|                                      © 2021 Forex Robot Easy Team |
+//|                                       https://forexroboteasy.com |
+//+------------------------------------------------------------------+
+#property strict
+
+// Define input parameters
+input int OrderType = OP_BUY;                   // Order type: OP_BUY or OP_SELL
+input double LotSize = 0.01;                    // Lot size for pending orders
+input int Slippage = 5;                         // Maximum allowed slippage in pips
+input bool AdjustForDST = true;                 // Adjust for daylight saving time
+
+// Define global variables
+datetime lastTime = 0;                          // Last time a pending order was placed
+datetime nextTime = 0;                          // Next time to place a pending order
+
+// Define trading functions
+void OpenPendingOrders()
+{
+   // Calculate the current time
+   datetime currentTime = TimeCurrent();
+
+   // Check if it's time to place a pending order
+   if (currentTime >= nextTime)
+   {
+      // Calculate the expiration time for the pending order
+      datetime expirationTime = currentTime + PeriodSeconds(PERIOD_M5);
+
+      // Place the pending order
+      int ticket = OrderSend(Symbol(), OrderType, LotSize, Bid, Slippage, 0, 0, 'Time in Trade', 0, expirationTime, clrNONE);
+
+      // Check if the pending order was successfully placed
+      if (ticket > 0)
+      {
+         Print('Pending order placed successfully! Ticket: ', ticket);
+         lastTime = currentTime;
+      }
+      else
+      {
+         Print('Failed to place pending order! Error code: ', GetLastError());
+      }
+
+      // Calculate the next time to place a pending order
+      nextTime = currentTime + PeriodSeconds(PERIOD_M5);
+   }
+}
+
+// Define the OnInit() function
+void OnInit()
+{
+   // Adjust for daylight saving time if enabled
+   if (AdjustForDST)
+   {
+      if (IsDST())
+      {
+         nextTime = TimeLocal() + PeriodSeconds(PERIOD_M5);
+      }
+      else
+      {
+         nextTime = TimeLocal() + PeriodSeconds(PERIOD_M5) - 3600;
+      }
+   }
+   else
+   {
+      nextTime = TimeLocal() + PeriodSeconds(PERIOD_M5);
+   }
+}
+
+// Define the OnTick() function
+void OnTick()
+{
+   // Check if it's time to open pending orders
+   if (TimeCurrent() >= nextTime)
+   {
+      OpenPendingOrders();
+   }
+}
+
+// Define the OnDeinit() function
+void OnDeinit(const int reason)
+{
+   // Print the reason for deinitialization
+   Print('Time in Trade deinitialized. Reason: ', reason);
+}
